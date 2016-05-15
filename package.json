@@ -1,0 +1,28 @@
+{
+  "name": "bm-wishy-washy-windows",
+  "version": "1.0.0",
+  "description": "A WebGL window manager",
+  "main": "Gruntfile.js",
+  "dependencies": {},
+  "devDependencies": {
+    "grunt": "^1.0.1",
+    "grunt-contrib-connect": "^1.0.2",
+    "grunt-contrib-jasmine": "^1.0.3",
+    "grunt-contrib-requirejs": "^1.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-template-jasmine-requirejs": "^0.2.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johntu/bm-wishy-washy-windows.git"
+  },
+  "author": "johntu, antonaut, mold",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/johntu/bm-wishy-washy-windows/issues"
+  },
+  "homepage": "https://github.com/johntu/bm-wishy-washy-windows#readme"
+}

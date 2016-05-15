@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="opentype.js"></script>
+<script src="script.js"></script>
+<style>
+@font-face {
+    font-family: "Montserrat";
+    font-weight: normal;
+    font-style: normal;
+    src: url("Montserrat-Regular.ttf");
+}
+
+body {
+    margin: 0;
+}
+
+img {
+    background: black;
+}
+
+#fontload {
+    font-family: "Montserrat";
+}
+</style>
+</head>
+<body>
+<p id="fontload">Bluemoon Font Map Creator</p>
+<script>
+
+var characters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", ":", ";", "!", "?", "\"", "'", "@", "#", "$", "%", "&", "+", "-", "*", "/", "\\", "(", ")", "[", "]", "{", "}", "<", ">"];
+
+var spacing = {};
+
+var fontName = 'Montserrat';
+var fontSource = 'Montserrat-Regular.ttf';
+
+var mapSize = 1024;
+var fontSize = 90;
+
+var horSpacing = 4;
+var displayBorder = false;
+
+opentype.load(fontSource, function (err, font) {
+    var char, glyph, scale, fontData, col, row, w, h, x, y,
+        xMin = 0,
+        xMax = 0,
+        characterData = {},
+        kerning = {},
+        charOfIndex = {};
+
+    scale = fontSize / font.unitsPerEm;
+
+    console.log(font);
+    window.font = font;
+
+    for (var key in font.kerningPairs) {
+        var glyphs = key.split(',');
+
+        if (typeof kerning[glyphs[0]] === 'undefined')
+            kerning[glyphs[0]] = {};
+        kerning[glyphs[0]][glyphs[1]] = font.kerningPairs[key];
+    }
+
+    for (var i = 0; i < characters.length; i++) {
+        char = characters[i];
+        charOfIndex[font.charToGlyphIndex(char)] = char;
+    }
+
+    for (var i = 0; i < characters.length; i++) {
+        char = characters[i];
+        glyph = font.charToGlyph(char);
+        characterData[char] = {};
+        characterData[char].index = i;
+        characterData[char].advanceWidth = glyph.advanceWidth * scale;
+        characterData[char].xMin = glyph.xMin * scale + ((glyph.xMin < 0)? -horSpacing : horSpacing);
+        characterData[char].xMax = glyph.xMax * scale - horSpacing;
+        characterData[char].yMin = glyph.yMin * scale;
+        characterData[char].yMax = glyph.yMax * scale;
+        characterData[char].leftSideBearing = glyph.leftSideBearing * scale;
+        if (kerning[glyph.index]) {
+            characterData[char].kerning = {};
+            for (var key in kerning[glyph.index]) {
+                characterData[char].kerning[charOfIndex[key]] = kerning[glyph.index][key] * scale;
+            }
+        } else {
+            characterData[char].kerning = null;
+        }
+        if (characterData[char].xMin < xMin)
+            xMin = characterData[char].xMin;
+        if (characterData[char].xMax > xMax)
+            xMax = characterData[char].xMax;
+    }
+
+    fontData = {
+        fontSize: fontSize,
+        width: Math.ceil(xMax - xMin),
+        height: (font.ascender - font.descender) * scale,
+        ascender: font.ascender * scale,
+        descender: font.descender * scale,
+        baseline: font.baseline * scale,
+        characters: characterData
+    }
+
+    // calculate uv coordinates
+    col = Math.floor(mapSize/fontData.width);
+    row = Math.ceil(characters.length/mapSize);
+    w = fontData.width / mapSize;
+    h = fontData.height / mapSize;
+    for (var i = 0; i < characters.length; i++) {
+        char = characters[i];
+        x = (i - Math.floor(i / col) * col) * w;
+        y = 1 - (Math.floor(i / col) + 1) * h;
+        characterData[char].uv = [
+            [x, y],
+            [x+w, y],
+            [x+w, y+h],
+            [x, y+h]
+        ];
+    }
+
+    window.fontData = fontData;
+    window.characterData = characterData;
+
+    var text = document.createElement('textarea');
+    text.value = JSON.stringify(fontData);
+    document.body.appendChild(text);
+
+    setTimeout(renderImage, 1);
+});
+
+function renderImage() {
+    var canvas = document.createElement('canvas');
+    canvas.width = mapSize;
+    canvas.height = mapSize;
+    canvas.style.zIndex = 1;
+    var ctx = canvas.getContext('2d');
+    var char;
+    var charWidth = fontData.width;
+    var charHeight = fontData.height;
+    var mapWidth = Math.floor(mapSize/charWidth);
+    var mapHeight = Math.ceil(characters.length/mapWidth);
+    
+    // ctx.fillStyle = '#000';
+    // ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = fontSize+'px "'+fontName+'"';
+    ctx.strokeStyle = '#fff';
+    ctx.fillStyle = '#fff';
+
+    for (var i=0; i < mapHeight; i++) {
+        if (displayBorder) {
+            ctx.beginPath();
+            ctx.moveTo(0, (i+1)*charHeight+.5);
+            ctx.lineTo(canvas.width, (i+1)*charHeight+.5);
+            ctx.stroke();
+        }
+        for (var j=0; j < mapWidth; j++) {
+            if (displayBorder && i === 0) {
+                ctx.beginPath();
+                ctx.moveTo(j*charWidth+.5, 0);
+                ctx.lineTo(j*charWidth+.5, canvas.height);
+                ctx.stroke();
+            }
+            if (i*mapWidth+j < characters.length) {
+                char = characters[i*mapWidth+j];
+                ctx.fillText(char,
+                    j*charWidth-characterData[char].leftSideBearing+Math.abs(characterData[char].xMin),
+                    (i+1)*charHeight+fontData.descender);
+            }
+        }
+    }
+
+    var img = new Image();
+    img.src = canvas.toDataURL();
+    document.body.appendChild(img);
+}
+
+</script>
+</body>
+</html>
